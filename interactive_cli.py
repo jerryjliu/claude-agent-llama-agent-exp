@@ -75,6 +75,7 @@ Additional notes:
 - Don't pass through silent failures, better to explicitly fail if you can. also on errors, don't pass events to next steps unless you know what you're doing - otherwise better to explicitly raise an exception 
 - Try to split steps up into different workflow steps if possible, instead of putting too much logic per workflow step
 - When building each workflow step, make sure that the consumer of the workflow step is correct. if you have multiple steps consume from the same upstream step, it has to be intentional. 
+- When building events between workflow steps, you want to make sure you avoid these errors: 'The following events are consumed but never produced', and 'The following events are produced but never consumed'. This relates to the above point on ensuring the producer and consumer are correct.
 - Err on the side of generating LLM-powered flows instead of heavy code/heuristic based decision making - especially in cases where you're dealing with a lot of text inputs and want the logic to be generalizable
 - When creating the final ExtractedData object, you should generally use ExtractedData.create *if* the final output is decoupled from the output of any LlamaExtract call. If the final output is the output, then do ExtractedData.from_extraction_result. Make sure the arguments to the ExtractedData object are correct for each case.
 - If you do use the LLM, use llamaindex openai, prompttemplate abstractions. use our structured prediction functions where necessary. MAKE SURE to obey correct function signatures for functions like `acomplete` (e.g. takes in string), `apredict` (e.g. takes in PromptTemplate + additional prompt args), and `astructured_predict` (e.g. takes in Pydantic schema, PromptTemplate, additional prompt args). This list is by no means comprehensive. Inspect the source library code or look up online resources if you need. In terms of the openai model, use the latest mini model.
@@ -188,11 +189,10 @@ def print_assistant_message(message: AssistantMessage) -> None:
             print(f"✓ Tool result ({status}): {preview}")
 
 
-async def interactive_session(skip_hitl: bool = False, model: str | None = None) -> None:
+async def interactive_session(skip_hitl: bool = False, model: str | None = None, project_root: Path | None = None) -> None:
     # Anchor the working directory to the target project to give Claude Code project context
-    project_root = (
-        Path(__file__).resolve().parents[1] / "extraction-review-exp1-cc"
-    )
+    if project_root is None:
+        project_root = Path.cwd()  # Default to current working directory
 
     options_kwargs: dict[str, Any] = {
         "allowed_tools": [
@@ -274,14 +274,27 @@ def main() -> None:
              f"{ClaudeModels.OPUS_4_1} (most capable), "
              f"{ClaudeModels.HAIKU_3_5} (fastest)",
     )
+    parser.add_argument(
+        "--project-root",
+        type=str,
+        default=None,
+        help="Project root directory (default: current working directory)",
+    )
     args = parser.parse_args()
 
     # Display model information
     model_to_use = args.model or ClaudeModels.DEFAULT
     print(f"🤖 Using model: {model_to_use}")
     
+    # Handle project root
+    project_root = Path(args.project_root) if args.project_root else None
+    if project_root:
+        print(f"📁 Project root: {project_root.resolve()}")
+    else:
+        print(f"📁 Project root: {Path.cwd().resolve()} (current directory)")
+    
     try:
-        asyncio.run(interactive_session(skip_hitl=bool(args.no_hitl), model=args.model))
+        asyncio.run(interactive_session(skip_hitl=bool(args.no_hitl), model=args.model, project_root=project_root))
     except KeyboardInterrupt:
         # Graceful shutdown
         print("\nInterrupted. Bye.")
