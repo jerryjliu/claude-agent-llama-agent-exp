@@ -4,9 +4,8 @@ import json
 from pathlib import Path
 from typing import Any
 
-from claude_code_sdk import (
+from claude_agent_sdk import (
     ClaudeSDKClient,
-    ClaudeCodeOptions,
     AssistantMessage,
     TextBlock,
     ToolUseBlock,
@@ -18,6 +17,7 @@ from claude_code_sdk import (
     HookMatcher,
     HookContext,
 )
+from claude_agent_helpers import create_claude_options, ClaudeModels
 
 
 HUMAN_GATED_TOOLS = {"bash", "edit", "multiedit", "write", "notebookedit"}
@@ -70,13 +70,13 @@ Additional notes:
 - Modify the python files, not the typescript files
 - Try to *not* modify the extracted_data_collection variable. because if you do, you will need to modify the corresponding variable in typescript too.
 - Types in the extracted schema have to be simple (primitives or lists). they can not be dicts. they can be nested
-- Types in the extracted schema should generally be optional - to allow LlamaExtract room to fail (it can sometimes return None for fields, and if the field is typed as required the script will break)
+- Types in the extracted schema should generally be optional - to allow LlamaExtract room to fail (it can sometimes return None for fields, and if the field is typed as required the script will break). This includes making list types optional.
 - Sometimes the output of LlamaExtract is NOT the desired final output of the workflow (which is also structured). If this is the case please decouple the schemas (e.g. separate them completely, or compose the output of LlamaExtract as a sub-schema within the final output schema). Always keep the final output schema as MySchema. 
 - Don't pass through silent failures, better to explicitly fail if you can. also on errors, don't pass events to next steps unless you know what you're doing - otherwise better to explicitly raise an exception 
 - Try to split steps up into different workflow steps if possible, instead of putting too much logic per workflow step
 - When building each workflow step, make sure that the consumer of the workflow step is correct. if you have multiple steps consume from the same upstream step, it has to be intentional. 
 - Err on the side of generating LLM-powered flows instead of heavy code/heuristic based decision making - especially in cases where you're dealing with a lot of text inputs and want the logic to be generalizable
-- When creating the final ExtractedData object, you should generally use ExtractedData.create *if* the final output is decoupled from the output of any LlamaExtract call. If the final output is the output, then do ExtractedData.from_extraction_result 
+- When creating the final ExtractedData object, you should generally use ExtractedData.create *if* the final output is decoupled from the output of any LlamaExtract call. If the final output is the output, then do ExtractedData.from_extraction_result. Make sure the arguments to the ExtractedData object are correct for each case.
 - If you do use the LLM, use llamaindex openai, prompttemplate abstractions. use our structured prediction functions where necessary. MAKE SURE to obey correct function signatures for functions like `acomplete` (e.g. takes in string), `apredict` (e.g. takes in PromptTemplate + additional prompt args), and `astructured_predict` (e.g. takes in Pydantic schema, PromptTemplate, additional prompt args). This list is by no means comprehensive. Inspect the source library code or look up online resources if you need. In terms of the openai model, use the latest mini model.
 
 """
@@ -188,7 +188,7 @@ def print_assistant_message(message: AssistantMessage) -> None:
             print(f"✓ Tool result ({status}): {preview}")
 
 
-async def interactive_session(skip_hitl: bool = False) -> None:
+async def interactive_session(skip_hitl: bool = False, model: str | None = None) -> None:
     # Anchor the working directory to the target project to give Claude Code project context
     project_root = (
         Path(__file__).resolve().parents[1] / "extraction-review-exp1-cc"
@@ -209,6 +209,10 @@ async def interactive_session(skip_hitl: bool = False) -> None:
         "system_prompt": SYSTEM_PROMPT,
         "cwd": str(project_root),
     }
+    
+    # Add model if specified
+    if model:
+        options_kwargs["model"] = model
 
     if not skip_hitl:
         options_kwargs["hooks"] = {
@@ -220,7 +224,7 @@ async def interactive_session(skip_hitl: bool = False) -> None:
             ]
         }
 
-    options = ClaudeCodeOptions(**options_kwargs)
+    options = create_claude_options(**options_kwargs)
 
     session_id = "interactive-cli"
 
@@ -255,16 +259,29 @@ async def interactive_session(skip_hitl: bool = False) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Interactive Claude Code CLI")
+    parser = argparse.ArgumentParser(description="Interactive Claude Agent CLI")
     parser.add_argument(
         "--no-hitl",
         action="store_true",
         help="Disable human-in-the-loop prompts for tool execution",
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default=None,
+        help=f"Claude model to use (default: {ClaudeModels.DEFAULT}). "
+             f"Popular options: {ClaudeModels.SONNET_4_5} (balanced), "
+             f"{ClaudeModels.OPUS_4_1} (most capable), "
+             f"{ClaudeModels.HAIKU_3_5} (fastest)",
+    )
     args = parser.parse_args()
 
+    # Display model information
+    model_to_use = args.model or ClaudeModels.DEFAULT
+    print(f"🤖 Using model: {model_to_use}")
+    
     try:
-        asyncio.run(interactive_session(skip_hitl=bool(args.no_hitl)))
+        asyncio.run(interactive_session(skip_hitl=bool(args.no_hitl), model=args.model))
     except KeyboardInterrupt:
         # Graceful shutdown
         print("\nInterrupted. Bye.")
