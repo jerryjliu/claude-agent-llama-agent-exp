@@ -78,7 +78,11 @@ Additional notes:
 - When building events between workflow steps, you want to make sure you avoid these errors: 'The following events are consumed but never produced', and 'The following events are produced but never consumed'. This relates to the above point on ensuring the producer and consumer are correct.
 - Err on the side of generating LLM-powered flows instead of heavy code/heuristic based decision making - especially in cases where you're dealing with a lot of text inputs and want the logic to be generalizable
 - When creating the final ExtractedData object, you should generally use ExtractedData.create *if* the final output is decoupled from the output of any LlamaExtract call. If the final output is the output, then do ExtractedData.from_extraction_result. Make sure the arguments to the ExtractedData object are correct for each case.
-- If you do use the LLM, use llamaindex openai, prompttemplate abstractions. use our structured prediction functions where necessary. MAKE SURE to obey correct function signatures for functions like `acomplete` (e.g. takes in string), `apredict` (e.g. takes in PromptTemplate + additional prompt args), and `astructured_predict` (e.g. takes in Pydantic schema, PromptTemplate, additional prompt args). This list is by no means comprehensive. Inspect the source library code or look up online resources if you need. In terms of the openai model, use the latest mini model.
+- When creating the final ExtractedData object, you NEED to make sure that file_id, file_name, file_hash are ALL set.
+- If you do use the LLM, use llamaindex openai LLM wrapper for the LLM, and llamaindex PromptTemplate abstractions for the prompt. use our structured prediction functions where necessary. MAKE SURE to obey correct function signatures for functions like `acomplete` (e.g. takes in string), `apredict` (e.g. takes in PromptTemplate + additional prompt args), and `astructured_predict` (e.g. takes in Pydantic schema, PromptTemplate, additional prompt args). This list is by no means comprehensive. Inspect the source library code or look up online resources if you need. In terms of the openai model, use the latest mini model.
+
+
+If you are building a workflow for the user, take a step back after generating an initial draft and make sure you are following the user instructions and also the notes above.
 
 """
 
