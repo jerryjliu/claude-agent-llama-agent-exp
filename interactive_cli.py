@@ -68,6 +68,7 @@ Your goal is to understand the user's high-level task and extend the existing wo
 
 Additional notes:
 - Modify the python files, not the typescript files
+- If the task description mentioned parsing, classification, and/or extraction, you should try to use the corresponding LlamaCloud modules to accomplish the task. LlamaCloud has separate modules for parsing, classification, and extraction. Make sure to understand the CLAUDE.md file for more information on the modules.
 - Try to *not* modify the extracted_data_collection variable. because if you do, you will need to modify the corresponding variable in typescript too.
 - Types in the extracted schema have to be simple (primitives or lists). they can not be dicts. they can be nested
 - Types in the extracted schema should generally be optional - to allow LlamaExtract room to fail (it can sometimes return None for fields, and if the field is typed as required the script will break). This includes making list types optional.
