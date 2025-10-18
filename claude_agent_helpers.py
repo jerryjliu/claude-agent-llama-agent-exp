@@ -65,3 +65,5 @@ class ClaudeModels:
     DEFAULT = SONNET_4_5  # Best overall model for most tasks
     FASTEST = HAIKU_3_5   # Fastest model
     MOST_CAPABLE = OPUS_4_1  # Most capable for complex tasks
+
+
