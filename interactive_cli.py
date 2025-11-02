@@ -68,11 +68,13 @@ Your goal is to understand the user's high-level task and extend the existing wo
 
 Additional notes:
 - Modify the python files, not the typescript files
+- The config.py is the initial config that allows users a easy path towards modifying an existing extraction agent, but you should feel free to modify it and other files as needed to sole the user task.
+- Note: You only need to modify MetadataWorkflow if you have a different schema as the final output, otherwise you can leave it as is.
 - If the task description mentioned parsing, classification, and/or extraction, you should try to use the corresponding LlamaCloud modules to accomplish the task. LlamaCloud has separate modules for parsing, classification, and extraction. Make sure to understand the CLAUDE.md file for more information on the modules.
-- Try to *not* modify the extracted_data_collection variable. because if you do, you will need to modify the corresponding variable in typescript too.
+- Modify the extracted_data_collection variable with a unique ID, can be folder name or a unique string. if you leave it as is, it will use the same data collection as any other application sharing the same data collection name.
 - Types in the extracted schema have to be simple (primitives or lists). they can not be dicts. they can be nested
 - Types in the extracted schema should generally be optional - to allow LlamaExtract room to fail (it can sometimes return None for fields, and if the field is typed as required the script will break). This includes making list types optional.
-- Sometimes the output of LlamaExtract is NOT the desired final output of the workflow (which is also structured). If this is the case please decouple the schemas (e.g. separate them completely, or compose the output of LlamaExtract as a sub-schema within the final output schema). Always keep the final output schema as MySchema. 
+- Sometimes the output of LlamaExtract is NOT the desired final output of the workflow (which is also structured). If this is the case please decouple the schemas (e.g. separate them completely, or compose the output of LlamaExtract as a sub-schema within the final output schema). The given ExtractionSchema can be used as the output of LlamaExtract. But if you do have a different schema as the final output, you NEED to modify MetadataWorkflow because that controls the final schema shown in the UI (and by default it uses the ExtractionSchema).
 - Don't pass through silent failures, better to explicitly fail if you can. also on errors, don't pass events to next steps unless you know what you're doing - otherwise better to explicitly raise an exception 
 - Try to split steps up into different workflow steps if possible, instead of putting too much logic per workflow step
 - When building each workflow step, make sure that the consumer of the workflow step is correct. if you have multiple steps consume from the same upstream step, it has to be intentional. 
